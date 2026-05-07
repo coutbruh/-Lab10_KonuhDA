@@ -1,0 +1,177 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
+
+namespace Lab10_SemyanovaME
+{
+    class Program
+    {
+        private static readonly HashSet<string> ForbiddenLogins = new HashSet<string>
+        {
+            "admin", "root", "user", "test", "system"
+        };
+
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Регистрация пользователя");
+
+            Console.Write("Введите логин: ");
+            string login = Console.ReadLine();
+
+            Console.Write("Введите пароль: ");
+            string password = Console.ReadLine();
+
+            Console.Write("Подтвердите пароль: ");
+            string confirmPassword = Console.ReadLine();
+
+            var (success, message) = ValidateUserData(login, password, confirmPassword);
+
+            if (success)
+            {
+                Console.WriteLine("Регистрация успешна!");
+            }
+            else
+            {
+                Console.WriteLine($"Ошибка: {message}");
+            }
+
+            Console.WriteLine("Нажмите любую клавишу для выхода...");
+            Console.ReadKey();
+        }
+
+        public static (bool, string) ValidateUserData(string login, string password, string confirmPassword)
+        {
+            string maskedPassword = MaskString(password);
+            string maskedConfirm = MaskString(confirmPassword);
+            DateTime timestamp = DateTime.Now;
+
+            if (string.IsNullOrWhiteSpace(login))
+            {
+                Log(timestamp, login, maskedPassword, maskedConfirm, "Логин не может быть пустым");
+                return (false, "Логин не может быть пустым");
+            }
+
+            if (!IsValidLogin(login))
+            {
+                string err = "Логин должен быть телефоном (+X-XXX-XXX-XXXX), email (xxx@xxx.xxx) или строкой из латиницы, цифр, _, минимум 5 символов";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (ForbiddenLogins.Contains(login.ToLower()))
+            {
+                string err = "Данный логин запрещён. Выберите другой.";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                Log(timestamp, login, maskedPassword, maskedConfirm, "Пароль не может быть пустым");
+                return (false, "Пароль не может быть пустым");
+            }
+
+            if (password.Length < 7)
+            {
+                string err = "Пароль должен содержать минимум 7 символов";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (!IsValidPasswordCharset(password))
+            {
+                string err = "Пароль может содержать только кириллицу, цифры и спецсимволы (латиница запрещена)";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (!password.Any(char.IsUpper))
+            {
+                string err = "Пароль должен содержать хотя бы одну заглавную букву";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (!password.Any(char.IsLower))
+            {
+                string err = "Пароль должен содержать хотя бы одну строчную букву";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (!password.Any(char.IsDigit))
+            {
+                string err = "Пароль должен содержать хотя бы одну цифру";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (!password.Any(ch => !char.IsLetterOrDigit(ch)))
+            {
+                string err = "Пароль должен содержать хотя бы один спецсимвол (!@#$%^&* и т.п.)";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            if (password != confirmPassword)
+            {
+                string err = "Пароль и подтверждение не совпадают";
+                Log(timestamp, login, maskedPassword, maskedConfirm, err);
+                return (false, err);
+            }
+
+            Log(timestamp, login, maskedPassword, maskedConfirm, "Успешная регистрация", isError: false);
+            return (true, "");
+        }
+
+        private static bool IsValidLogin(string login)
+        {
+            return IsPhoneNumber(login) || IsEmail(login) || IsPlainStringLogin(login);
+        }
+
+        private static bool IsPhoneNumber(string input)
+        {
+            return Regex.IsMatch(input, @"^\+\d-\d{3}-\d{3}-\d{4}$");
+        }
+
+        private static bool IsEmail(string input)
+        {
+            try
+            {
+                var addr = new MailAddress(input);
+                return addr.Address == input && input.Contains("@") && input.Contains(".");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsPlainStringLogin(string input)
+        {
+            return input.Length >= 5 && Regex.IsMatch(input, @"^[a-zA-Z0-9_]+$");
+        }
+
+        private static bool IsValidPasswordCharset(string password)
+        {
+            return Regex.IsMatch(password, @"^[а-яА-ЯёЁ0-9\W_]+$");
+        }
+
+        private static string MaskString(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "***";
+            if (input.Length <= 4) return new string('*', input.Length);
+            return input.Substring(0, 2) + new string('*', input.Length - 4) + input.Substring(input.Length - 2);
+        }
+
+        private static void Log(DateTime timestamp, string login, string maskedPass, string maskedConfirm, string message, bool isError = true)
+        {
+            string logLine = $"[{timestamp:yyyy-MM-dd HH:mm:ss}] Логин: {login}, Пароль: {maskedPass}, Подтверждение: {maskedConfirm} | {(isError ? "ОШИБКА: " + message : "УСПЕХ: " + message)}";
+            Console.WriteLine(logLine);
+            File.AppendAllText("registration_log.txt", logLine + Environment.NewLine);
+        }
+    }
+}
