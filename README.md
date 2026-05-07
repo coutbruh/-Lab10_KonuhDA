@@ -1,10 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+# Lab10_SemyanovaME
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+## Описание
+Консольное приложение для проверки регистрационных данных (логин, пароль, подтверждение пароля).
 
-</Project>
+## Проверки
+- Логин: телефон (+7-123-456-7890), email (user@mail.ru) или строка (латиница/цифры/_, мин. 5 символов)
+- Логин не должен быть: admin, root, user, test, system
+- Пароль: минимум 7 символов, только кириллица/цифры/спецсимволы, обязательно: заглавная, строчная, цифра, спецсимвол
+- Пароль и подтверждение совпадают
+
+## Логирование
+- В консоль
+- В файл registration_log.txt
+
+## Как запустить
+1. Установите .NET 8.0
+2. Откройте проект в Visual Studio
+3. Нажмите F5
+
+## Автор
+Семьянова М.Е.
